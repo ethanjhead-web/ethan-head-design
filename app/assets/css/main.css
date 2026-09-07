@@ -1,0 +1,179 @@
+
+@import "tailwindcss";
+
+@font-face {
+  font-family: departure;
+  src: url("/fonts/DepartureMono-Regular.woff2") format("woff2"),
+       url("/fonts/DepartureMono-Regular.woff") format("woff");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@theme {
+    --font-pixel: "departure", sans-serif;
+    --cursor-auto: url('/images/cursor-auto.svg') 4 0, auto;
+    --cursor-pointer: url('/images/cursor-pointer.svg') 4 0, pointer;
+    --cursor-text: url('/images/cursor-text.svg') 4 0, text;
+    --cursor-not-allowed: url('/images/cursor-not-allowed.svg') 4 0, not-allowed;
+}
+
+:root, [data-theme='code'] {
+  --color-bg: #10141f;
+  --color-text: #ffffff;
+  --color-fill: #75a743;
+  --color-danger: #cf573c;
+  --color-highlight: #ffcc00;
+}
+
+[data-theme='melon'] {
+  --color-bg: #012824;
+  --color-text: #ebede9;
+  --color-fill: #265935;
+  --color-danger: #ff4d6d;
+  --color-highlight: #ff4d6d;
+}
+
+[data-theme='vapor'] {
+  --color-bg: #482254;
+  --color-text: #feffbe;
+  --color-fill: #ff8370;
+  --color-danger: #83ded2;
+  --color-highlight: #feffbe;
+}
+
+[data-theme='game'] {
+  --color-bg: #708028;
+  --color-text: #405010;
+  --color-fill: #a0a840;
+  --color-danger: #d0d058;
+  --color-highlight: #d0d058;
+}
+
+[data-theme='paint'] {
+  --color-bg: #b8c2b9;
+  --color-text: #382b26;
+  --color-fill: #382b26;
+  --color-danger: #382b26;
+  --color-highlight: #382b26;
+}
+
+[data-theme='moon'] {
+  --color-bg: #0f052d;
+  --color-text: #36868f;
+  --color-fill: #203671;
+  --color-danger: #5fc75d;
+  --color-highlight: #5fc75d;
+}
+
+[data-theme='acid'] {
+  --color-bg: #b2d942;
+  --color-text: #ffffff;
+  --color-fill: #52c33f;
+  --color-danger: #fcf660;
+  --color-highlight: #fcf660;
+}
+
+[data-theme='1-bit'] {
+  --color-bg: #0f0f0f;
+  --color-text: #989898;
+  --color-fill: #989898;
+  --color-danger: #313131;
+  --color-highlight: #989898;
+}
+
+[data-theme='vacay'] {
+  --color-bg: #f0d0b0;
+  --color-text: #0000fc;
+  --color-fill: #12b385;
+  --color-danger: #fc9797;
+  --color-highlight: #0000fc;
+}
+
+[data-theme='devil'] {
+  --color-bg: #130208;
+  --color-text: #ff8274;
+  --color-fill: #7c183c;
+  --color-danger: #31051e;
+  --color-highlight: #ff8274;
+}
+
+:root {
+  font-family: var(--font-pixel);
+  font-size: clamp(0.875rem, 0.875vw, 1rem);
+}
+
+/* CRT effect: chromatic aberration via SVG filter (defined in default.vue),
+   curvature via a subtle 3D tilt, scanlines + vignette as compositor-only
+   overlays. Remove the `crt` class to disable everything below. */
+html,
+body {
+  /* backstop so any sliver revealed by the .crt tilt reads as the theme
+     background instead of the browser's default white */
+  background: var(--color-bg, #10141f);
+}
+
+.crt-frame {
+  /* clips the perspective bleed from .crt's tilt (a rotateX rotation
+     magnifies the far edge past its own layout box, which otherwise grows
+     the document's scrollable area and shows the page background through
+     the gap). This wrapper is never itself transformed and never sized to
+     the viewport, so it clips only that bleed — a .crt taller than the
+     viewport still overflows this frame and scrolls the document normally. */
+  overflow: hidden;
+}
+
+.crt {
+  position: relative;
+  filter: url(#crt-chromatic-aberration);
+  transform: perspective(1200px) rotateX(1deg);
+  transform-origin: center top;
+}
+
+.crt::before,
+.crt::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.crt::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: multiply;
+  animation: crt-scanline-drift 8s linear infinite;
+}
+
+.crt::after {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 55%,
+    rgba(0, 0, 0, 0.35) 100%
+  );
+  mix-blend-mode: multiply;
+  animation: crt-flicker 6s ease-in-out infinite;
+}
+
+@keyframes crt-scanline-drift {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 12px; }
+}
+
+@keyframes crt-flicker {
+  0%, 100% { opacity: 0.95; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt::before,
+  .crt::after {
+    animation: none;
+  }
+}
