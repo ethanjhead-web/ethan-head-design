@@ -1,75 +1,23 @@
-# Nuxt Minimal Starter
+# Ethan Head — Portfolio (V4)
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Personal portfolio site built with Nuxt 4, Nuxt Content, Tailwind CSS v4 and GSAP.
 
-## Setup
-
-Make sure to install dependencies:
+## Development
 
 ```bash
-# npm
 npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
+npm run dev        # http://localhost:3000
+npm run build      # server build (.output/)
+npm run generate   # static build (.output/public/)
+npm run preview    # preview the last build
 ```
 
-## Development Server
+## Structure
 
-Start the development server on `http://localhost:3000`:
+- `content/work/*.md`, `content/blog/*.md` — projects and posts; frontmatter schemas live in `content.config.ts`
+- `app/pages/work/[[slug]].vue` — the work grid and project panels (one reused page instance so tiles can animate into panels)
+- `app/utils/themes.ts` — the theme list; each theme's colors are a `[data-theme]` block in `app/assets/css/main.css`
+- `app/composables/` — visitor preferences (CRT, SFX) and work progress, stored in cookies so the server renders them on first paint
+- `app/plugins/` — GSAP and the click sound-effect handler (`data-audio="<key>"` on any element)
 
-```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+The secret project unlocks once every other project has been opened.

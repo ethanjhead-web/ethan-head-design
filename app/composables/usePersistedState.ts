@@ -1,59 +1,42 @@
-// Shared shape behind useCrt/useSfx: a useState value mirrored to
-// localStorage. Each composable configures its own default, (de)serialization,
-// and whether init()/reset() should persist the computed default back to
-// storage — those flags exist to preserve each preference's original
-// behavior, not as speculative options.
+const ONE_YEAR = 60 * 60 * 24 * 365
+
+// Shared shape behind useCrt/useSfx: a user preference stored in a cookie
+// (not localStorage) so the server can render the saved choice on first
+// paint instead of it switching on after hydration.
+//
+// `stored` is null until the visitor makes a choice; until then the value is
+// `getDefault()`, which may read browser APIs and so is only resolved on the
+// client, in init().
 export function usePersistedState<T>(options: {
-  storageKey: string
-  stateKey: string
+  key: string
   initialValue: T
   getDefault?: () => T
-  serialize?: (value: T) => string
-  deserialize?: (raw: string) => T
-  onChange?: (value: T) => void
-  persistDefaultOnInit?: boolean
-  clearStorageOnReset?: boolean
 }) {
-  const {
-    storageKey,
-    stateKey,
-    initialValue,
-    getDefault = () => initialValue,
-    serialize = (value: T) => String(value),
-    deserialize = (raw: string) => raw as unknown as T,
-    onChange,
-    persistDefaultOnInit = false,
-    clearStorageOnReset = false,
-  } = options
+  const { key, initialValue, getDefault = () => initialValue } = options
 
-  const state = useState<T>(stateKey, () => initialValue)
+  const cookie = useCookie<T | null>(key, { default: () => null, maxAge: ONE_YEAR, sameSite: 'lax' })
+  const stored = useState<T | null>(`${key}:stored`, () => cookie.value ?? null)
+  const fallback = useState<T>(`${key}:default`, () => initialValue)
 
-  function apply(value: T) {
-    state.value = value
-    onChange?.(value)
-  }
+  const state = computed(() => stored.value ?? fallback.value)
 
   function set(value: T) {
-    apply(value)
-    if (import.meta.client) localStorage.setItem(storageKey, serialize(value))
+    stored.value = value
+    cookie.value = value
   }
 
+  // call from onMounted. Re-reading the cookie covers prerendered pages,
+  // where the server never saw it.
   function init() {
     if (!import.meta.client) return
-    const stored = localStorage.getItem(storageKey)
-    if (stored !== null) apply(deserialize(stored))
-    else if (persistDefaultOnInit) set(getDefault())
-    else apply(getDefault())
+    stored.value = cookie.value ?? null
+    if (stored.value === null) fallback.value = getDefault()
   }
 
   function reset() {
-    if (!import.meta.client) return
-    if (clearStorageOnReset) {
-      localStorage.removeItem(storageKey)
-      apply(getDefault())
-    } else {
-      set(getDefault())
-    }
+    stored.value = null
+    cookie.value = null
+    if (import.meta.client) fallback.value = getDefault()
   }
 
   return { state, set, init, reset }

@@ -35,13 +35,41 @@ useSeoMeta({
 })
 
 const nonSecretProjects = computed(() => projects.value.filter((p) => !p.secret))
-const secretProject = computed(() => projects.value.find((p) => p.secret))
 const openedNonSecretCount = computed(
   () => nonSecretProjects.value.filter((p) => isOpened(p.slug)).length,
 )
 const secretUnlocked = computed(
   () => nonSecretProjects.value.length > 0 && openedNonSecretCount.value >= nonSecretProjects.value.length,
 )
+
+function isLocked(project) {
+  return project.secret && !secretUnlocked.value
+}
+
+// Unknown slugs 404 (otherwise every tile would be `inert`), and a locked
+// secret project can't be reached by typing its URL.
+function routeProblem() {
+  if (!activeSlug.value) return null
+  if (!activeProject.value) return 'missing'
+  if (isLocked(activeProject.value)) return 'locked'
+  return null
+}
+
+const initialProblem = routeProblem()
+if (initialProblem === 'missing') {
+  throw createError({ statusCode: 404, statusMessage: 'Project not found', fatal: true })
+}
+if (initialProblem === 'locked') {
+  await navigateTo('/work', { replace: true })
+}
+
+// this page instance is reused across /work navigations (see definePageMeta
+// above), so setup alone wouldn't catch client-side ones
+watch(activeSlug, () => {
+  const problem = routeProblem()
+  if (problem === 'missing') showError({ statusCode: 404, statusMessage: 'Project not found' })
+  else if (problem === 'locked') navigateTo('/work', { replace: true })
+})
 
 const secretRevealedThisSession = ref(false)
 
@@ -51,10 +79,18 @@ onMounted(() => {
   // previous session — must happen synchronously, before the watcher below
   // ever gets a chance to flush, since computed values update immediately
   if (secretUnlocked.value) secretRevealedThisSession.value = true
+
+  // count a project as opened however the visitor got there (tile click,
+  // direct link, browser back/forward), not only via the close button
+  watch(activeProject, (project) => {
+    if (project && !isLocked(project)) markOpened(project.slug)
+  }, { immediate: true })
 })
 
-watch(secretUnlocked, (unlocked) => {
-  if (unlocked && !secretRevealedThisSession.value) {
+// play the reveal once the visitor is back on the grid, where they can see
+// the lock open, rather than while the last project's panel covers it
+watch([secretUnlocked, activeSlug], ([unlocked, slug]) => {
+  if (unlocked && slug === null && !secretRevealedThisSession.value) {
     secretRevealedThisSession.value = true
     $playSfx('reveal')
   }
@@ -97,13 +133,37 @@ function wrapperRefFor(slug) {
   return wrapperRefCallbacks.get(slug)
 }
 
-async function openProject(project) {
+// open/close each run several awaited tweens; a second click mid-animation
+// would start a competing sequence on the same elements
+let animating = false
+
+function withAnimationLock(fn) {
+  return async (...args) => {
+    if (animating) return
+    animating = true
+    try {
+      await fn(...args)
+    } finally {
+      animating = false
+    }
+  }
+}
+
+function onTileClick(event, project) {
+  // let modified clicks (new tab/window) behave like a normal link
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+  event.preventDefault()
+  openProject(project)
+}
+
+const openProject = withAnimationLock(async (project) => {
   const { slug } = project
-  if (project.secret && !secretUnlocked.value) return
+  if (isLocked(project)) return
+  if (prefersReducedMotion()) return navigateTo(`/work/${slug}`)
 
   const main = mainRef.value
   const wrapper = wrapperRefs.get(slug)
-  const tileButton = wrapper.querySelector(':scope > button')
+  const tileButton = wrapper.querySelector(':scope > .js-tile')
   const from = measureRelativeTo(wrapper, main)
   const mainRect = main.getBoundingClientRect()
   const to = { left: 0, top: 0, width: mainRect.width, height: mainRect.height }
@@ -138,10 +198,12 @@ async function openProject(project) {
   if (actions.length) {
     tl.fromTo(actions, { scale: 0 }, { scale: 1, duration: 0.2, ease: 'expo.inOut', stagger: -0.1 }, '<')
   }
-}
+})
 
-async function closeProject(project) {
+const closeProject = withAnimationLock(async (project) => {
   const { slug } = project
+  if (prefersReducedMotion()) return navigateTo('/work')
+
   const main = mainRef.value
   const wrapper = wrapperRefs.get(slug)
   const panelContent = wrapper.querySelectorAll('.js-panel-content')
@@ -162,11 +224,10 @@ async function closeProject(project) {
   // phase 1: shrink width (content already invisible, haven't navigated yet)
   await afterTween($gsap.to(wrapper, { left: to.left, width: to.width, duration: 0.25, ease: 'power2.inOut' }))
 
-  markOpened(slug)
   await navigateTo('/work')
   await nextTick()
 
-  const tileButton = wrapper.querySelector(':scope > button')
+  const tileButton = wrapper.querySelector(':scope > .js-tile')
   $gsap.set(tileButton, { opacity: 0 })
 
   // phase 2: shrink height (content still invisible)
@@ -175,13 +236,13 @@ async function closeProject(project) {
   $gsap.set(wrapper, { clearProps: 'position,zIndex,left,top,width,height' })
 
   // now that the box is back to its resting size, reveal the tile again
-  await $gsap.to(tileButton, { opacity: 1, duration: 0.2 })
-}
+  await afterTween($gsap.to(tileButton, { opacity: 1, duration: 0.2 }))
+})
 </script>
 
 <template>
   <main id="work" ref="mainRef" class="max-lg:p-8 relative col-span-full row-span-full grid grid-cols-subgrid lg:h-full *:bg-(--color-bg) *:ring *:ring-black/50">
-    <svg aria-hidden="true" class="absolute w-0 h-0 overflow-hidden" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <svg aria-hidden="true" class="absolute w-0 h-0 overflow-hidden" version="1.1" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <symbol id="icon-identity" viewBox="0 0 24 24">
           <title>Branding and Identity</title>
@@ -387,20 +448,23 @@ async function closeProject(project) {
           ? 'absolute z-10 top-0 left-0 w-full h-full bg-(--color-bg) flex flex-col overflow-hidden'
           : 'w-full h-full'"
       >
-      <button
+      <!-- a real link (so crawlers and new-tab clicks work) unless locked;
+           plain clicks are intercepted to run the open animation first -->
+      <component
+        :is="isLocked(project) ? 'button' : 'a'"
         v-if="activeSlug !== project.slug"
-        type="button"
-        :disabled="project.secret && !secretUnlocked"
+        :type="isLocked(project) ? 'button' : undefined"
+        :disabled="isLocked(project) || undefined"
+        :href="isLocked(project) ? undefined : `/work/${project.slug}`"
         :class="[
-          'cursor-pointer reticle relative flex flex-col items-center justify-center gap-y-8 w-full h-full p-8',
-          project.secret && !secretUnlocked ? 'cursor-not-allowed' : 'cursor-pointer',
+          'js-tile reticle relative flex flex-col items-center justify-center gap-y-8 w-full h-full p-8',
+          isLocked(project) ? 'cursor-not-allowed' : 'cursor-pointer',
         ]"
-        :aria-expanded="false"
         data-audio="maximize"
-        @click="openProject(project)"
+        @click="onTileClick($event, project)"
       >
-        <h2 class="text-center" :style="{ color: project.secret && !secretUnlocked ? 'var(--color-danger)' : undefined }">
-          {{ project.secret && !secretUnlocked ? 'Secret Project' : project.title }}
+        <h2 class="text-center" :style="{ color: isLocked(project) ? 'var(--color-danger)' : undefined }">
+          {{ isLocked(project) ? 'Secret Project' : project.title }}
         </h2>
 
         <ul class="flex justify-center space-x-5">
@@ -412,9 +476,9 @@ async function closeProject(project) {
             <span class="sr-only">{{ skill.label }}</span>
             <svg
               class="size-7 -rotate-45 fill-current"
-              :class="project.secret && !secretUnlocked ? 'text-(--color-danger)' : 'text-(--color-fill)'"
+              :class="isLocked(project) ? 'text-(--color-danger)' : 'text-(--color-fill)'"
             >
-              <use :xlink:href="`#icon-${skill.icon}`"></use>
+              <use :href="`#icon-${skill.icon}`"></use>
             </svg>
           </li>
         </ul>
@@ -424,9 +488,9 @@ async function closeProject(project) {
         </span>
 
         <svg v-if="project.secret" class="absolute left-1/2 bottom-8 -translate-x-1/2 size-4 fill-current opacity-50" :class="secretUnlocked ? 'text-(--color-fill)' : 'text-(--color-text)'">
-          <use :xlink:href="secretUnlocked ? '#icon-lock-opened' : '#icon-lock-closed'"></use>
+          <use :href="secretUnlocked ? '#icon-lock-opened' : '#icon-lock-closed'"></use>
         </svg>
-      </button>
+      </component>
 
       <template v-else>
         <div class="js-panel-content relative w-full lg:h-1/8 px-8 max-lg:py-4 border-b border-black/50 flex items-center justify-between">
@@ -462,7 +526,7 @@ async function closeProject(project) {
               <li v-for="skill in project.skills" :key="skill.icon" class="-mt-6">
                 <span class="flex items-center justify-center w-12 h-12 mx-auto mb-10 border border-(--color-danger) rotate-45 outline outline-offset-10 ring-10 ring-(--color-bg) outline-black/50 bg-(--color-bg)">
                   <svg class="size-7 text-(--color-fill) fill-current -rotate-45">
-                    <use :xlink:href="`#icon-${skill.icon}`"></use>
+                    <use :href="`#icon-${skill.icon}`"></use>
                   </svg>
                 </span>
                 <p class="[font-variant-caps:all-small-caps]">{{ skill.shortLabel }}</p>
@@ -472,15 +536,15 @@ async function closeProject(project) {
             <ContentRenderer :value="project" />
 
             <dl class="flex flex-wrap gap-y-2 [font-variant-caps:all-small-caps]">
-              <dt class="w-full lg:w-1/4 pb-2 flex items-center gap-2 border-b border-black/50"><svg class="size-4 fill-current"><use xlink:href="#icon-hyperlink"></use></svg>URL</dt>
+              <dt class="w-full lg:w-1/4 pb-2 flex items-center gap-2 border-b border-black/50"><svg class="size-4 fill-current"><use href="#icon-hyperlink"></use></svg>URL</dt>
               <dd class="w-full lg:w-3/4 pb-2 border-b border-black/50"><a :href="project.url" target="_blank" data-audio="open">{{ project.urlShort }}</a></dd>
 
-              <dt class="w-full lg:w-1/4 pb-2 flex items-center gap-2 border-b border-black/50"><svg class="size-4 fill-current"><use xlink:href="#icon-factory"></use></svg>Industry</dt>
+              <dt class="w-full lg:w-1/4 pb-2 flex items-center gap-2 border-b border-black/50"><svg class="size-4 fill-current"><use href="#icon-factory"></use></svg>Industry</dt>
               <dd class="w-full lg:w-3/4 pb-2 border-b border-black/50">{{ project.industry }}</dd>
 
               <template v-if="project.awards.length">
                 <dt class="w-full lg:w-1/4 flex items-center gap-2">
-                  <svg class="size-4 fill-current"><use xlink:href="#icon-trophy"></use></svg>Awards
+                  <svg class="size-4 fill-current"><use href="#icon-trophy"></use></svg>Awards
                 </dt>
                 <dd class="w-full lg:w-3/4">
                   <a v-for="award in project.awards" :key="award.name" :href="award.url" target="_blank" class="block">{{ award.name }}</a>

@@ -10,8 +10,18 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: monogram;
+  src: url("/fonts/monogram.woff2") format("woff2"),
+       url("/fonts/monogram.woff") format("woff");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 @theme {
-    --font-pixel: "departure", sans-serif;
+    --font-departure: "departure", sans-serif;
+    --font-monogram: "monogram", sans-serif;
     --cursor-auto: url('/images/cursor-auto.svg') 4 0, auto;
     --cursor-pointer: url('/images/cursor-pointer.svg') 4 0, pointer;
     --cursor-text: url('/images/cursor-text.svg') 4 0, text;
@@ -99,35 +109,27 @@
 }
 
 :root {
-  font-family: var(--font-pixel);
-  font-size: clamp(0.875rem, 0.875vw, 1rem);
+  font-family: var(--font-departure);
+  font-size: 1rem;
 }
 
-/* CRT effect: chromatic aberration via SVG filter (defined in default.vue),
-   curvature via a subtle 3D tilt, scanlines + vignette as compositor-only
-   overlays. Remove the `crt` class to disable everything below. */
-html,
-body {
-  /* backstop so any sliver revealed by the .crt tilt reads as the theme
-     background instead of the browser's default white */
-  background: var(--color-bg, #10141f);
+.reticle:hover {
+  --b: 1px;
+  --c: var(--color-highlight);
+  --w: 1em;
+  --_g: var(--color-bg) 90deg, var(--c) 0;
+  --_p: var(--w) var(--w) border-box no-repeat;
+  background: conic-gradient(from 90deg at top var(--b) left var(--b),var(--_g)) 0 0 / var(--_p), conic-gradient(from 180deg at top var(--b) right var(--b),var(--_g)) 100% 0 / var(--_p), conic-gradient(from 0deg at bottom var(--b) left var(--b),var(--_g)) 0 100% / var(--_p), conic-gradient(from -90deg at bottom var(--b) right var(--b),var(--_g)) 100% 100% / var(--_p);
 }
 
-.crt-frame {
-  /* clips the perspective bleed from .crt's tilt (a rotateX rotation
-     magnifies the far edge past its own layout box, which otherwise grows
-     the document's scrollable area and shows the page background through
-     the gap). This wrapper is never itself transformed and never sized to
-     the viewport, so it clips only that bleed — a .crt taller than the
-     viewport still overflows this frame and scrolls the document normally. */
-  overflow: hidden;
-}
-
+/* CRT effect: barrel curvature + chromatic aberration both via the SVG
+   filter (defined in default.vue) — curvature is a real per-pixel
+   displacement map, not a flat 3D tilt, so it still applies to live,
+   interactive DOM. Scanlines + vignette are compositor-only overlays.
+   Remove the `crt` class to disable everything below. */
 .crt {
   position: relative;
   filter: url(#crt-chromatic-aberration);
-  transform: perspective(1200px) rotateX(1deg);
-  transform-origin: center top;
 }
 
 .crt::before,
@@ -173,7 +175,98 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .crt::before,
-  .crt::after {
+  .crt::after,
+  .glide {
     animation: none;
   }
+}
+
+/* Paper-plane bob + tilt, ported from the two GSAP timelines in main.js.
+   Each transform gets its own keyframe loop (as in the JS, where the y-bob
+   and rotation are separate timelines), sine-sampled every 5% with linear
+   stepping so velocity only bottoms out at the true peaks (25%/75%), not at
+   every keyframe. Crucially the two loops are also out of phase like the
+   original: rotation starts immediately, the y-bob starts 0.5s later — that
+   stagger is what keeps the tilt and the bob from reading as one rigid,
+   synchronized swing. @property lets both drive the same `transform` so
+   they combine instead of one clobbering the other. */
+@property --glide-y {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --glide-rotate {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes glide-bob {
+  0%   { --glide-y: 0rem; }
+  5%   { --glide-y: 0.062rem; }
+  10%  { --glide-y: 0.118rem; }
+  15%  { --glide-y: 0.162rem; }
+  20%  { --glide-y: 0.190rem; }
+  25%  { --glide-y: 0.2rem; }
+  30%  { --glide-y: 0.190rem; }
+  35%  { --glide-y: 0.162rem; }
+  40%  { --glide-y: 0.118rem; }
+  45%  { --glide-y: 0.062rem; }
+  50%  { --glide-y: 0rem; }
+  55%  { --glide-y: -0.062rem; }
+  60%  { --glide-y: -0.118rem; }
+  65%  { --glide-y: -0.162rem; }
+  70%  { --glide-y: -0.190rem; }
+  75%  { --glide-y: -0.2rem; }
+  80%  { --glide-y: -0.190rem; }
+  85%  { --glide-y: -0.162rem; }
+  90%  { --glide-y: -0.118rem; }
+  95%  { --glide-y: -0.062rem; }
+  100% { --glide-y: 0rem; }
+}
+
+@keyframes glide-rotate {
+  0%   { --glide-rotate: 0deg; }
+  5%   { --glide-rotate: -6.2deg; }
+  10%  { --glide-rotate: -11.8deg; }
+  15%  { --glide-rotate: -16.2deg; }
+  20%  { --glide-rotate: -19deg; }
+  25%  { --glide-rotate: -20deg; }
+  30%  { --glide-rotate: -19deg; }
+  35%  { --glide-rotate: -16.2deg; }
+  40%  { --glide-rotate: -11.8deg; }
+  45%  { --glide-rotate: -6.2deg; }
+  50%  { --glide-rotate: 0deg; }
+  55%  { --glide-rotate: 6.2deg; }
+  60%  { --glide-rotate: 11.8deg; }
+  65%  { --glide-rotate: 16.2deg; }
+  70%  { --glide-rotate: 19deg; }
+  75%  { --glide-rotate: 20deg; }
+  80%  { --glide-rotate: 19deg; }
+  85%  { --glide-rotate: 16.2deg; }
+  90%  { --glide-rotate: 11.8deg; }
+  95%  { --glide-rotate: 6.2deg; }
+  100% { --glide-rotate: 0deg; }
+}
+
+.glide {
+  transform: translateY(var(--glide-y)) rotate(var(--glide-rotate));
+  animation:
+    glide-bob 4s linear infinite 0.5s,
+    glide-rotate 4s linear infinite 0s;
+}
+
+::-webkit-scrollbar {
+  width: 0.25rem;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.5);
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 0;
+  background: var(--color-text);
 }

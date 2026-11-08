@@ -4,6 +4,10 @@ const path = `/blog/${route.params.slug}`
 
 const { data: post } = await useAsyncData(path, () => queryCollection('blog').path(path).first())
 
+if (!post.value) {
+  throw createError({ statusCode: 404, statusMessage: 'Post not found', fatal: true })
+}
+
 useSeoMeta({
   title: () => (post.value ? `${post.value.title} — Blog` : 'Blog'),
   description: () =>
@@ -22,6 +26,4 @@ useSeoMeta({
       <ContentRenderer :value="post" class="*:cursor-text py-8 lg:p-16 space-y-8" />
     </article>
   </template>
-
-  <p v-else class="cursor-text p-8">Post not found.</p>
 </template>

@@ -1,6 +1,13 @@
+<script setup>
+useSeoMeta({
+  title: 'About',
+  description: 'Graphic designer and developer with over 10 years of experience in branding, user interface design, front-end development and web animation.',
+})
+</script>
+
 <template>
-    <main id="about" class="max-lg:p-8 relative col-span-full lg:col-span-3 row-span-full space-y-8 lg:overflow-auto">
-        <svg aria-hidden="true" class="absolute w-0 h-0 overflow-hidden" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <main id="about" class="max-lg:p-8 relative col-span-full lg:col-span-3 row-span-full pr-16 space-y-8 lg:overflow-auto">
+        <svg aria-hidden="true" class="absolute w-0 h-0 overflow-hidden" version="1.1" xmlns="http://www.w3.org/2000/svg">
             <defs>
                 <symbol id="icon-email" viewBox="0 0 24 24">
                     <title>Email</title>
@@ -24,7 +31,7 @@
   
         <h1 class="sr-only">About</h1>
                 
-        <p class="cursor-text">Hi, I&rsquo;m Ethan! I am a graphic designer and developer with over 10 years of experience in branding and storytelling, user interface design, frontend web development and web-based animation. I&rsquo;ve done work for clients big and small, from corporate to independent, and everything in between. Check out my credentials below or send me a message <a href="mailto:ethanjhead@gmail.com" class="cursor-pointer inline-block align-bottom -scale-x-100" data-audio="open"><span class="sr-only">Email ethanjhead@gmail.com</span><svg id="paper-plane" class="size-6 text-(--color-highlight) fill-current will-change-transform"><use xlink:href="#icon-email"></use></svg></a></p>
+        <p class="cursor-text">Hi, I&rsquo;m Ethan! I am a graphic designer and developer with over 10 years of experience in branding and storytelling, user interface design, frontend web development and web-based animation. I&rsquo;ve done work for clients big and small, from corporate to independent, and everything in between. Check out my credentials below or send me a message <a href="mailto:ethanjhead@gmail.com" class="cursor-pointer inline-block align-bottom -scale-x-100" data-audio="open"><span class="sr-only">Email ethanjhead@gmail.com</span><svg class="glide size-6 text-(--color-highlight) fill-current will-change-transform"><use href="#icon-email"></use></svg></a></p>
 
         <details class="group cursor-text flex flex-col">
             
@@ -36,17 +43,17 @@
         <h2 class="uppercase mt-6 mb-2">Work Experience</h2>
         <ul class="space-y-4">
             <li class="space-y-1">
-            <h3 class="[font-variant-caps:all-small-caps]">Mad Genius | Ridgeland, MS</h3>
-            <ul class="list-[square] pl-8 space-y-2">
+                <h3 class="[font-variant-caps:all-small-caps]">Mad Genius | Ridgeland, MS</h3>
+                <ul class="list-[square] pl-8 space-y-2">
                     <li>
-                    <h4>Interactive Art Director | 2018-Present</h4>
-                    <p>Responsibilities include leading user interface design on a diverse array of client work, creating engaging digital storytelling experiences, coding responsive, animated, front-end web applications, and building custom Wordpress templates.</p>
+                        <h4>Interactive Art Director | 2018-Present</h4>
+                        <p>Responsibilities include leading user interface design on a diverse array of client work, creating engaging digital storytelling experiences, coding responsive, animated, front-end web applications, and building custom Wordpress templates.</p>
                     </li>
                     <li>
-                    <h4>Web Designer | 2014-2018</h4>
-                    <p>Responsibilities included designing user interfaces for a diverse array of client work, coding responsive, front-end web applications, and building custom Wordpress templates.</p>
+                        <h4>Web Designer | 2014-2018</h4>
+                        <p>Responsibilities included designing user interfaces for a diverse array of client work, coding responsive, front-end web applications, and building custom Wordpress templates.</p>
                     </li>
-            </ul>
+                </ul>
             </li>
     
             <li class="space-y-1">

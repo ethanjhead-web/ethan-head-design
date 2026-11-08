@@ -1,4 +1,5 @@
 import tailwindcss from '@tailwindcss/vite'
+import { DEFAULT_THEME } from './app/utils/themes'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -8,8 +9,8 @@ export default defineNuxtConfig({
   modules: ['@nuxtjs/color-mode', '@nuxt/content'],
 
   colorMode: {
-    preference: 'code',
-    fallback: 'code',
+    preference: DEFAULT_THEME,
+    fallback: DEFAULT_THEME,
     dataValue: 'theme',
     classPrefix: '',
     classSuffix: '',
@@ -21,6 +22,7 @@ export default defineNuxtConfig({
 
   app: {
     head: {
+      htmlAttrs: { lang: 'en' },
       link: [
         {
           rel: 'preload',
